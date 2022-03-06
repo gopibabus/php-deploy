@@ -1,0 +1,169 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>New Users | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>New Users</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/XVhHX1K7Yd4"
+                            title="new-users"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="creating%2Fmodifying-users">Creating/Modifying Users</h1>
+
+<p>We've logged into the new server. We can now setup this server to be run as a web application server.</p>
+
+<h2 id="some-basics">Some Basics</h2>
+
+<p>I'm going to use the following tools often, so let's just install some utilities now:</p>
+
+<pre><code class="bash">sudo apt-get install -y tmux vim curl wget unzip htop
+</code></pre>
+
+<p>Next, we'll create some users so we can stop logging in as the root user.</p>
+
+<h2 id="login">Login</h2>
+
+<p>By default, we only get the root user to log in. As we saw in the last video, that looked like this:</p>
+
+<pre><code class="bash">ssh -o "IdentitiesOnly yes" -i ~/.ssh/id_series root@45.55.209.211
+</code></pre>
+
+<h2 id="new-user">New User</h2>
+
+<p>Now if we didn't want user root (or any password-less sudo user, e.g. what AWS provides), we can add:</p>
+
+<ol>
+<li>A new admin user, who will be able to run sudo commands (with a password)</li>
+<li>A new application user, who will be used to run our application but won't have sudo privileges (yet)</li>
+</ol>
+
+<p>Let's add two new users:</p>
+
+<pre><code class="bash">sudo adduser admin
+sudo adduser serial
+</code></pre>
+
+<p>Then we can check them out by looking in the <code>/etc/passwd</code> file:</p>
+
+<pre><code class="bash">cat /etc/passwd | grep admin
+cat /etc/passwd | grep serial
+</code></pre>
+
+<p>Our new user <code>admin</code> in the video has a uid/gid of 1001 (anything over 1000 is a non-system user). The user's home directory exists (<code>/home/admin</code>) and the user's shell (the shell used when they log in) is defined as <code>/bin/bash</code>:</p>
+
+<p><code>admin:x:1001:1001:,,,:/home/admin:/bin/bash</code></p>
+
+<h3 id="sudo-privileges">Sudo Privileges</h3>
+
+<p>We want the admin user to be able to run sudo commands. Let's add that user into the <code>sudo</code> group:</p>
+
+<pre><code class="bash">usermod -a -G sudo admin
+
+# Confirm user is in admin group
+groups admin
+</code></pre>
+
+<h2 id="local-ssh-key-to-new-users">Local SSH Key to new users</h2>
+
+<p>Now we want to be able to log in as these users using the same SSH key we created before.</p>
+
+<p>Like in the last video, let's copy public key we made to both new user's <code>authorized_keys</code> directory using <code>ssh-copy-id</code>. Note that we created <code>id_series</code> in the previous video:</p>
+
+<pre><code class="bash">ssh-copy-id -i ~/.ssh/id_series -o "PubkeyAuthentication no"
+    admin@45.55.209.211
+
+ssh-copy-id -i ~/.ssh/id_series -o "PubkeyAuthentication no"
+    serial@45.55.209.211
+</code></pre>
+
+<p>Then SSH in from local to test it works using the same commands as before, but changing the user (<code>admin</code> and <code>appuser</code>).</p>
+
+<blockquote>
+  <p>Do this carefully, so as not to get locked out! Keep a connection open in another tab in your terminal just in case something goes wrong.</p>
+</blockquote>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

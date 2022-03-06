@@ -1,0 +1,220 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Git &amp; Github | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Git &amp; Github</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/zI7Kccd3nN8"
+                            title="git-for-deployment"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="git-for-deployment">Git for Deployment</h1>
+
+<p>We'll create a repository for our local code base.</p>
+
+<h2 id="make-an-php-app">Make an PHP App</h2>
+
+<pre><code class="bash">cd ~/Sites/serialapp
+
+git init
+git remote add origin git@github.com:Servers-for-Hackers/serialapp.git
+git add --all
+git commit -m "first commit"
+git push -u origin master
+</code></pre>
+
+<p>This pushes the code up to GitHub!</p>
+
+<p>Then we create a PHP application, which we'll use for the rest of this series as an example.</p>
+
+<pre><code class="bash">cd ~/Sites/serialapp
+
+composer create-project laravel/laravel serialapp
+
+# Move everything in ~/Sites/serialapp/serialapp up a level to ~/Sites/serialapp
+cd ~/Sites/serialapp/serialapp
+mv ./* ../
+mv ./.* ../
+cd ../
+rm -r serialapp # remove extra directory
+</code></pre>
+
+<p>We can then try to run this on our local computer:</p>
+
+<pre><code class="bash">cd ~/Sites/serialapp/public
+php -S 0.0.0.0:8000
+</code></pre>
+
+<p>Heading to <code>localhost:8000</code> in your browser should show a Laravel app!</p>
+
+<p>Then we can add all these changes and push them up to our respository:</p>
+
+<pre><code class="bash">git add --all
+git commit -m "added laravel app"
+git push origin master
+</code></pre>
+
+<h2 id="setup-our-server">Setup our Server</h2>
+
+<p>Next, we want to log into our server and setup our Github repository. This will let us orchestrate updating the code on our server after we push it to Github.</p>
+
+<p>Install Git as user <code>admin</code>:</p>
+
+<pre><code class="bash">ssh serial-admin
+sudo apt-get install -y git
+</code></pre>
+
+<p>Then login as user <code>serial</code>, and we'll clone the serialapp repository:</p>
+
+<pre><code class="bash"># SSH into our production app server
+ssh serial-app
+
+cd ~/serialapp.com/current/
+git clone git@github.com:Servers-for-Hackers/serialapp.git repo
+</code></pre>
+
+<p>This fails because this server does not have access to communicate to my git repository</p>
+
+<h3 id="github-ssh-access">GitHub SSH Access</h3>
+
+<p>Let's create a new, passwordless, ssh key to use to communicate to GitHub:</p>
+
+<pre><code class="bash">cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C "chris@serialapp.com"
+</code></pre>
+
+<p>Copy the contents of <code>~/.ssh/id_rsa.pub</code> into GitHub for the repository, giving it read-only access.</p>
+
+<p>Then try cloning that repository again!</p>
+
+<pre><code class="bash">cd ~/serialapp.com/current/
+git clone git@github.com:Servers-for-Hackers/serialapp.git repo
+# creates repo in ~/serialapp/current/repo
+</code></pre>
+
+<p>That should now work!</p>
+
+<p>As of this moment, the Nginx web root is set to <code>~/serialapp/current/public</code>.</p>
+
+<p>As a temporary solution to get this running, let's change the Nginx configuration for the site to make our <code>repo/public</code> directory the web root.</p>
+
+<p>This needs to be done as user <code>admin</code>, who can run sudo commands, so log back in as that user.</p>
+
+<p>Then we can edit the Nginx configuration at <code>/etc/nginx/sites-available/serial</code>. Change the <code>root</code> directive to:</p>
+
+<pre><code>server {
+    ...
+    root /home/serial/serialapp.com/current/repo/public;
+    ...
+}
+</code></pre>
+
+<p>Then we can reload the Nginx configuration:</p>
+
+<pre><code class="bash">sudo service nginx reload
+</code></pre>
+
+<p>If we reload the browser now, we'll get a blank white page. We need to get the code base to work, which includes getting the composer dependencies.</p>
+
+<pre><code class="bash"># as user admin still
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+which composer # /usr/loca/bin/composer
+</code></pre>
+
+<p>Then install the composer dependencies:</p>
+
+<pre><code class="bash"># as user serial
+cd /home/serial/serialapp.com/current/repo
+composer install
+</code></pre>
+
+<p>We still see an error when reloading that in the browser. We'll see an error about "No supported encrypter". We need an <code>.env</code> file to exist, it should have a proper application key (the <code>APP_KEY</code> variable).</p>
+
+<p>Once that exists and is set, we'll get the Laravel application to show!</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

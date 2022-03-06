@@ -1,0 +1,293 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Firewalls | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Firewalls</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                        id="vjs-video-current"
+                        class="video-js vjs-default-skin vjs-big-play-centered"
+                        width="100%"
+                        height="641"
+                        src="https://www.youtube.com/embed/VGNRRFvHCiE"
+                        title="firewalls"
+                        allow="picture-in-picture"
+                        allowfullscreen
+                >
+                </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="securing-the-network">Securing the Network</h1>
+
+<p>IPtables is the default firewall you'll find in most servers. We'll discuss how to view, add and delete firewall rules.</p>
+
+<h2 id="the-situation">The situation</h2>
+
+<p>Run <code>sudo iptables -L -v</code> to see current firewall rules. You'll likely see something like this:</p>
+
+<pre><code>Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination   
+</code></pre>
+
+<p>The three rule "chains" here are INPUT, FORWARD, and OUTPUT.</p>
+
+<p>INPUT deals with external network traffic going into the server. OUTPUT is exactly the opposite. The FORWARD chain deals with traffic going between networks within the server.</p>
+
+<p>The default policy is <code>ACCEPT</code> for all three rule chains. We see there are no rules in the three chains, so this server is completely open to all traffic.</p>
+
+<p>We'll deal mostly with the INPUT chain to protect the server against external traffic headed into the server.</p>
+
+<blockquote>
+  <p>We can make the default policy for any chain to DROP or REJECT traffic. Read more about DROP vs REJECT here: http://serverfault.com/questions/157375/reject-vs-drop-when-using-iptables</p>
+</blockquote>
+
+<h2 id="persistance">Persistance</h2>
+
+<p>Firewall rules won't persist through reboots out of the box.</p>
+
+<p>However, we can use some basic commands to output the current ruleset as text, and a command that will take that text and apply them as the current ruleset.</p>
+
+<pre><code class="bash"># Output rules to stdout
+sudo iptables-save
+
+# Set rules based on text input
+sudo iptables-restore
+</code></pre>
+
+<p>For Example, to save iptables rules:</p>
+
+<pre><code class="bash">sudo iptables-save &gt; ~/rules.v4
+</code></pre>
+
+<p>Later, we can restore those rules:</p>
+
+<pre><code class="bash">sudo iptables-restore &lt; ~/rules.v4
+</code></pre>
+
+<h3 id="persisting-rules-through-reboots-debian%2Fubuntu">Persisting Rules through Reboots (Debian/Ubuntu)</h3>
+
+<p>Install the <code>iptables-persistent</code> package to persist firewall rules:</p>
+
+<pre><code class="bash">sudo apt-get install -y iptables-persistent
+sudo service iptables-persistent start
+
+sudo service iptables-persistent save
+</code></pre>
+
+<!-- 
+### Persisting Rules through Reboots (CentOS/RedHat)
+
+We won't need to install anything to do this on these distributions of Linux.
+
+You can run the following:
+
+```bash
+sudo chkconfig iptables on
+sudo service iptables save
+sudo service iptables start
+```
+
+You'll find your IPv4 and IPv6 rule files at `/etc/sysconfig/iptables` and `/etc/sysconfig/ip6tables` respectively.
+
+-->
+
+<h2 id="firewall-rule-basics">Firewall Rule Basics</h2>
+
+<p>We're ready to create firewall rules for our server.</p>
+
+<p>As mentioned, what we'll do is add to the INPUT chain.</p>
+
+<p><strong>First</strong>, we'll handle loopback/localhost data. The following command will allow data between items on the localhost network (loopback interface):</p>
+
+<pre><code class="bash">sudo iptables -A INPUT -i lo -j ACCEPT
+</code></pre>
+
+<p>We're telling iptables to do the following:</p>
+
+<ul>
+<li>Append (<code>-A</code>) to INPUT chain</li>
+<li>Apply to traffic originating from the loopback interface (<code>-i</code>)</li>
+<li>Jump (<code>-j</code>) that traffic to the ACCEPT "target", which says to allow that traffic through</li>
+</ul>
+
+<p><strong>Second</strong>, a more advanced but necessary command which ensures I don't accidentally cut myself out of the server (it allows my <em>currently</em> established SSH connection):</p>
+
+<pre><code class="bash">sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+</code></pre>
+
+<p>This will allow/keep current related/established rules.</p>
+
+<p>The command does the following:</p>
+
+<ul>
+<li>Appends (<code>-A</code>) to the INPUT chain</li>
+<li>Uses the module (<code>-m</code>) conntrack</li>
+<li>Check for state (<code>--ctstate</code>) 'related', 'established'</li>
+<li>JUMP (<code>-j</code>) to the ACCEPT target</li>
+</ul>
+
+<p>What's this affecting?</p>
+
+<p>Use the command <code>netstat -a</code> to see items with the state ESTABLISHED or RELATED. These items will be near the top of the output:</p>
+
+<pre><code>Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 *:ssh                   *:*                     LISTEN     
+tcp        0    324 172.30.0.86:ssh         cpe-173-174-200-3:61248 ESTABLISHED
+tcp6       0      0 [::]:ssh                [::]:*                  LISTEN     
+udp        0      0 *:bootpc                *:*                                
+udp        0      0 *:40118                 *:*                                
+udp6       0      0 [::]:46591              [::]:*
+</code></pre>
+
+<p>We can see that I have an ESTABLISHED connection to SSH to this server from my local network (my internet connection at home). This connection will not be cut out since I've allowed currently established through the INPUT chain.</p>
+
+<h2 id="web-server-firewall-rules">Web Server Firewall Rules</h2>
+
+<p>We'll continue on and allow in web and SSH traffic:</p>
+
+<pre><code class="bash">sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+</code></pre>
+
+<ul>
+<li>Append (<code>-A</code>) to INPUT chain</li>
+<li>Apply to protocol (<code>-p</code>) TCP</li>
+<li>Destination port (<code>--dport</code>) 22 and 80</li>
+<li>Jump to the ACCEPT target</li>
+</ul>
+
+<p>Lastly, we drop all other traffic:</p>
+
+<pre><code class="bash">sudo iptables -A INPUT -j DROP
+</code></pre>
+
+<ul>
+<li>Append (<code>-A</code>) to INPUT chain</li>
+<li>Jump (<code>-j</code>) to the DROP target, to drop the network packets</li>
+</ul>
+
+<p>Now investigate the rules we've created:</p>
+
+<pre><code class="bash">sudo iptables -L -v
+</code></pre>
+
+<p>These are explained more in the video - basically what we've done is to create a chain of rules. The first rule to be matched tells the server what to do with the traffic. The last rule essentially is a catch-all, telling the server to block anything that wasn't matched above it.</p>
+
+<h3 id="https-insert-over-append">HTTPS (Insert over Append)</h3>
+
+<p>If we need to insert a rule instead of append one to allow other connections, such as https traffic, run the following to Insert (instead of Append) a rule at a specific location in the chain:</p>
+
+<pre><code class="bash">sudo iptables -I INPUT 5 -p tcp --dport 443 -j ACCEPT
+</code></pre>
+
+<ul>
+<li>Insert (<code>-I</code>) to INPUT chain, at the 5th position (1-based index)</li>
+<li>Protocol (<code>-p</code>) TCP</li>
+<li>Destination port (<code>--dport</code>) 443</li>
+<li>Jump (<code>-j</code>) to the ACCEPT target</li>
+</ul>
+
+<h2 id="delete-rules">Delete Rules</h2>
+
+<p>These are equivalent. One drops the rule by position, and the other drops the rule by matching the parameters (port, destination port, jump target).</p>
+
+<pre><code class="bash">sudo iptables -D INPUT 3
+sudo iptables -D INPUT -p tcp --dport 22 -j ACCEPT
+</code></pre>
+
+<h3 id="find-rules-by-command">Find Rules by Command</h3>
+
+<p>We can delete rules by find the command originally used to create them.</p>
+
+<p>To show all the current rules as valid Iptables command, run: <code>sudo iptables -S</code></p>
+
+<p>You can then copy one of them and then tweak it to delete <code>-D</code> rather than append or insert.</p>
+
+<p>For example, if we copy <code>-A INPUT -p tcp -m tcp --dport 22 -j ACCEPT</code> and edit it, we'll end up with a command like the following:</p>
+
+<pre><code class="bash"># Deletes the rule allowing port 22 traffic:
+sudo iptables -D INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+</code></pre>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

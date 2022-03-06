@@ -1,0 +1,214 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Notifications During Deployment | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Notifications During Deployment</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/uYlkl11jgns"
+                            title="notify"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="adding-notifications">Adding Notifications</h1>
+
+<p>You might want to add notifications to your deployment process. I use Slack, and wanted to know when a deployment was ran, as well as it's outcome.</p>
+
+<p>To do this, I added more code into the Python script. This has the benefit of keeping the NodeJS listener as simple as possible - it is only responsible for listening to webhooks and adding jobs to the queue.</p>
+
+<p>Back in our Python virtualenv, we can add another library for make using Slack's web API easy.</p>
+
+<pre><code class="bash"># as user deployer
+cd ~/build-server
+source .venv/bin/activate
+
+pip install requests
+</code></pre>
+
+<p>Next, we can create a new python file, responsible for making notifications. I'll call this file <code>notify.py</code>:</p>
+
+<pre><code class="python">import requests
+import json
+
+def slack(results, error=False):
+    # Good candidate for an environment variable
+    slackUrl = 'https://hooks.slack.com/services/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'
+
+    color = 'good'
+    msg = 'Success'
+
+    if error:
+        color = 'danger'
+        msg = 'Error'
+
+    title = 'Deployment %s' % msg
+
+    fields = []
+
+    for host in results:
+        fields.append({
+            'title': 'host',
+            'value': host,
+            'short': True
+        })
+
+    # Go through each host?
+
+    payload = {
+        'username': 'Deploy Bot',
+        'icon_emoji': ':cloud:',
+        'channel': '#builds',
+        'attachments' : [{
+            'fallback': title,
+            'color': color,
+            'title': title,
+            'title_link': "http://45.55.209.211",
+            'text': 'Deployment Status',
+            'fields': fields
+        }]
+    }
+
+    response = requests.post(slackUrl, data=json.dumps(payload))
+
+    return response
+</code></pre>
+
+<p>And then we can use it in our <code>deploy.py</code> script:</p>
+
+<pre><code class="python">import sys
+import json
+from datetime import datetime
+from StringIO import StringIO
+
+import fabfile
+from fabric.api import execute
+
+import boto3
+
+import notify
+
+sqs = boto3.resource('sqs')
+deploy_queue = sqs.get_queue_by_name(QueueName='serial-deploy')
+
+def run_deploy(message):
+    try:
+        iomsg = StringIO(message.body)
+        job_data = json.load(iomsg)
+
+        # job_data['job']['time']
+        # job_data['job']['reference']
+
+        # We're not using job_data, yet
+        result = execute(fabfile.deploy)
+
+        # Check if successful
+        has_errors = False
+        for host in result:
+            if result[host]:
+                has_errors = True
+                print "Error: %s" % result[host]
+
+        if not has_errors:
+            message.delete()
+
+        notify.slack(result, has_errors)
+    except Exception as e:
+        print "Unexpected error:", sys.exc_info()[0]
+
+while True:
+    messages = deploy_queue.receive_messages(
+        MaxNumberOfMessages=1,  # Single message at a time
+        VisibilityTimeout=60,   # 60 seconds
+        WaitTimeSeconds=10      # Wait for 10 seconds for next job
+    )
+
+    if len(messages) &gt; 0:
+        print "Starting deployment at %s" % datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+        run_deploy(messages[0])
+</code></pre>
+
+<p>Now we'll see the results of a deployment in a slack channel!</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Making the Build Server Build | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Making the Build Server Build</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/zyREh3qVxRQ"
+                            title="build server deps"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="building-on-the-build-server">Building on the Build Server</h1>
+
+<p>Let's get our build server to build and package the application completely before we deploy it.</p>
+
+<p>We need to install a few things so it can build our application:</p>
+
+<ol>
+<li>Access to the Github repository</li>
+<li>PHP to pull in composer packages</li>
+<li>NodeJS Gulp packages</li>
+</ol>
+
+<h2 id="git-repo">Git Repo</h2>
+
+<p>As our build server has the Github key for this repository, I can close it on the build server:</p>
+
+<pre><code class="bash"># Access available via ~/.ssh/id_github
+#   and with help from ~/.ssh/config
+# As "appuser"
+cd ~/build-server
+git clone git@github.com:Servers-for-Hackers/serialapp.git repo
+</code></pre>
+
+<p><strong>Note:</strong> This server can access the Github repository because it contains SSH key ~/.ssh/id_github, whos public key was added to the Github repository in previous videos.</p>
+
+<p>The <code>~/.ssh/config</code> file used to make sure that key is used within Github for the <code>appuser</code> (deployment) system user looks like this:</p>
+
+<pre><code>Host github.com
+    HostName github.com
+    IdentityFile ~/.ssh/id_github
+    User git
+    IdentitiesOnly yes
+</code></pre>
+
+<p>This is automatically used when we clone, since the hostname used is <code>github.com</code>.</p>
+
+<h2 id="php-dependencies">PHP Dependencies</h2>
+
+<p>We'll need PHP stuff to pull in Composer packages:</p>
+
+<pre><code class="bash"># As sudo user, admin
+
+# Install PHP
+sudo add-apt-repository -y ppa:ondrej/php5-5.6
+sudo apt-get update
+# Also install zip to zip up builds
+sudo apt-get install -y \
+    php5-cli php5-mcrypt \
+    zip
+
+# Install Composer
+curl -sS https://getcomposer.org/installer | sudo php
+sudo mv composer.phar /usr/local/bin/composer
+</code></pre>
+
+<h2 id="node-dependencies">Node Dependencies</h2>
+
+<p>Our build server already has NodeJS, so when we build, we can install the application Node dependencies and run Gulp straight away:</p>
+
+<pre><code class="bash">npm install
+./node_modules/.bin/gulp
+</code></pre>
+
+<p>We don't need to install anything special to make this happen.</p>
+
+<h2 id="build-it%21">Build It!</h2>
+
+<p>That should be it! We can now move a little bit of our build set to a local one. Here's a Bash script which outlines what that build process looks like:</p>
+
+<pre><code class="bash">#!/usr/bin/env bash
+
+# Bail on first non-zero exit code
+set -e
+
+# Ensure this dir exists
+mkdir -p ~/build-server/packages
+
+# Get latest code and copy to releases
+# Create new release and package directory
+cd ~/build-server/repo
+git checkout master
+git pull origin master
+
+RELEASE=`git rev-parse HEAD`
+mkdir -p ~/build-server/releases/$RELEASE
+
+git archive --worktree-attributes master | tar -x -C ~/build-server/releases/$RELEASE
+
+# Build application
+cd ~/build-server/releases/$RELEASE
+
+npm install
+./node_modules/.bin/gulp
+
+composer install
+
+# Package application
+cd ~/build-server/releases
+zip -r --exclude="*.git*" --exclude="*node_modules*" \
+    ~/build-server/packages/${RELEASE}.zip ./${RELEASE}
+</code></pre>
+
+<p>Run the bash script! We also use the <code>time</code> command to give us some idea on time and memory usage:</p>
+
+<pre><code class="bash">time bash build.sh
+</code></pre>
+
+<p>We'll see a package built in our <code>~/build-server/packages</code> directory now!</p>
+
+<h2 id="resources">Resources</h2>
+
+<ul>
+<li><a href="https://www.npmjs.com/package/npm-cache">Cache NPM packages Locally</a> (If you don't have a fancy private repo)</li>
+<li>Composer will cache packages locally by default</li>
+</ul>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

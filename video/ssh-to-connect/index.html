@@ -1,0 +1,177 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>SSH To Connect | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>SSH To Connect</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/uOCFpvwxJLY"
+                            title="ssh-to-connect"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="ssh-access">SSH Access</h1>
+
+<p>You have a brand new server - naturally you want to log in.</p>
+
+<h2 id="basic-mechanics">Basic Mechanics</h2>
+
+<pre><code class="bash">ssh root@45.55.209.211
+</code></pre>
+
+<p>I've spun up a Digital Ocean server, which gives us root access, so I login using the user "root" and the IP address provided.</p>
+
+<p>When I try to login with the above, I get an error. Let's find out what's up by adding a few "v" flags (you can add up to 4 for various levels of verbose debuggin output):</p>
+
+<pre><code class="bash">ssh -vvvv root@45.55.209.211
+</code></pre>
+
+<p>You can see the output in the video. The <code>ssh</code> command is trying to use all the various keys I happen to have. I have a lot, so it's going over the keys and reaching the max allowed attempts, as set by the server we're connecting to.</p>
+
+<p>Since Digital Ocean gives me a password to log in with, we don't want it to check any SSH keys.</p>
+
+<p>Let's tell it to NOT use public key authentication, which will let it fallback to password based authentication (currently allowed by the remote server):</p>
+
+<pre><code class="bash"># Don't use public key authentication
+ssh -o "PubkeyAuthentication no" root@45.55.209.211
+</code></pre>
+
+<p>The <code>-o</code> flag lets us add SSH options. We can see lots of options available when running the <code>man ssh</code> command.</p>
+
+<h2 id="ssh-key-access">SSH Key Access</h2>
+
+<p>SSH access is more secure than using a password. Password-based authentication sends the password to the remote server. SSH key access, even when it has a password, does not.</p>
+
+<p>Note that you can set a password when creating an SSH keypair. If you use SSH key authentication with a password, you'll be protected in a few ways:</p>
+
+<ol>
+<li>You'll be using SSH keys (encrypted traffic, authentication based on having the correct private key)</li>
+<li>You'll have a password needed to use the SSH key (another layer of protection in case someone gets a hold of the SSH private key)</li>
+<li>You're server user will have their own password as well, often needed for running <code>sudo</code> commands, adding another layer of protection, assuming you disallow access to the root user</li>
+</ol>
+
+<p>SSH key access is also a way to give access to one or more servers with the same set of credentials.</p>
+
+<p>Let's create an SSH key on our local computer, which we'll use to connect to this server (and others!) in this video series.</p>
+
+<pre><code class="bash">cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C "chris@serversforhackers.com" -f id_series
+</code></pre>
+
+<p>Create a password!</p>
+
+<p>Next let's copy the <em>public</em> key to the remote server, in it's <code>authorized_keys</code> file. This authorizes our public/private key pair to be used to login for the remote server user's <code>authorized_key</code> file.</p>
+
+<pre><code class="bash"># On mac:
+brew install ssh-copy-id
+
+# Then do it
+ssh-copy-id -o "PubkeyAuthentication no" \
+    -i ~/.ssh/id_series.pub root@45.55.209.211
+</code></pre>
+
+<p>Now, in theory, we can login using our key! Because I have a lot of keys, I'll specify the key I want:</p>
+
+<pre><code class="bash">ssh -i ~/.ssh/id_series root@45.55.209.211
+</code></pre>
+
+<p>That <em>still</em> didn't work! We got the same error as when using no key! It turns out that you need to also tell it both to use a specific identity in addition to the key to use (sigh, computers). That looks like this:</p>
+
+<pre><code class="bash">ssh -o "IdentitiesOnly yes" \
+    -i ~/.ssh/id_series root@45.55.209.211
+</code></pre>
+
+<p>And then we're in!</p>
+
+<h2 id="what-we-covered%3A">What we covered:</h2>
+
+<ol>
+<li>Logging in via password, despite ssh trying to use key pairs</li>
+<li>Creating an SSH key pair</li>
+<li>Ensuring we can log into the remote server via SSH key</li>
+<li>Logging in via SSH key when you have many ssh keys</li>
+</ol>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

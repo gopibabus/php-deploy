@@ -1,0 +1,254 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Creating a Build Server | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Creating a Build Server</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/QDYVcyZjqSA"
+                            title="create build server"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="automating-deployment%3A-the-build-server">Automating Deployment: The Build Server</h1>
+
+<p>In this video, I create our build server, which has the parts needed listen for web requests (webhooks) and run our Fabric deploy process.</p>
+
+<h2 id="create-users">Create Users</h2>
+
+<p>First we'll create some users - one admin user (who can use sudo) and one that will run our deploy scripts.</p>
+
+<pre><code class="bash">sudo adduser admin
+sudo adduser deployer
+
+usermod -a -G sudo admin
+groups admin
+</code></pre>
+
+<h3 id="ssh-access">SSH Access</h3>
+
+<p>Let's setup our SSH keys so we can log in as these users.</p>
+
+<p>On our local computer, we'll copy our local SSH key id to the new server. The new server still can only be accessed via password, so we'll say not to use public key based authentication to copy these SSH key ID's over.</p>
+
+<pre><code class="bash">ssh-copy-id -o "PubkeyAuthentication on" \
+            -i ~/.ssh/id_series \
+            admin@104.236.246.253
+
+ssh-copy-id -o "PubkeyAuthentication on" \
+            -i ~/.ssh/id_series \
+            deployer@104.236.246.253
+
+# We'll disable root user access
+# but we'll add this key for now to log in more easily
+# until we do that
+ssh-copy-id -o "PubkeyAuthentication on" \
+            -i ~/.ssh/id_series \
+            root@104.236.246.253
+</code></pre>
+
+<h2 id="install-some-basics">Install Some Basics</h2>
+
+<p>Log back in as user <code>root</code>:</p>
+
+<pre><code class="bash">ssh -o "IdentitiesOnly yes" -i ~/.ssh/id_seris root@104.236.246.253
+</code></pre>
+
+<p>Then we can start installing the basics:</p>
+
+<pre><code class="bash">sudo apt-get update
+sudo apt-get install -y vim curl tmux wget unzip htop
+</code></pre>
+
+<h2 id="ssh-configuration%2Fsecurity">SSH Configuration/Security</h2>
+
+<p>Let's edit our SSHD configuration to add some security.</p>
+
+<pre><code>sudo vim /etc/ssh/sshd_config
+</code></pre>
+
+<p>These are the two settings we'll change:</p>
+
+<pre><code>PermitRootLogin without-password  # PW auth disabled, key-only
+PasswordAuthentication no         # Key-only in general
+</code></pre>
+
+<p>You can read about these more using the <code>man sshd_config</code> command.</p>
+
+<p>We'll disable root login completely and turn off password-based authentication:</p>
+
+<pre><code>PermitRootLogin no
+PasswordAuthentication no
+</code></pre>
+
+<p>Finally restart SSH so that takes effect:</p>
+
+<pre><code class="bash">sudo service ssh restart
+</code></pre>
+
+<h2 id="firewalls">Firewalls</h2>
+
+<p>Let's setup firewall rules, exactly like we did on our application server.</p>
+
+<pre><code class="bash">sudo apt-get install -y iptables-persistent
+sudo service iptables-persistent start
+
+sudo iptables -A INPUT -i lo -j ACCEPT
+sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables -A INPUT -j DROP
+
+sudo service iptables-persistent save
+</code></pre>
+
+<h2 id="software">Software</h2>
+
+<p>After our access and security concerns, we can start getting the software we need to run deployments. This includes Python, pip and NodeJS.</p>
+
+<pre><code class="bash"># Python
+sudo apt-get install -y python-pip python-dev build-essential
+sudo pip install -U pip
+sudo pip install virtualenv
+
+# NodeJS
+curl --silent --location https://deb.nodesource.com/setup_0.12 | sudo bash -
+sudo apt-get install -y nodejs
+</code></pre>
+
+<h2 id="fabric-setup">Fabric Setup</h2>
+
+<p>User <code>deployer</code> will be running Fabric. Log in as user <code>deployer</code> and run the following steps to get the build server setup:</p>
+
+<pre><code class="bash"># A directory for our build files
+cd ~/
+mkdir build-server
+cd build-server
+
+# A virtualenv and python dependencies
+# for fabric to run
+virtualenv .venv
+source .venv/bin/activate
+pip install fabric
+
+vim fabfile.py
+# Copy the fabfile.py we created so far
+
+vim deploy.py
+# Copy the deploy.py file created in the last video
+</code></pre>
+
+<p>If we try to deploy, we'll see we don't have access to the application server yet!</p>
+
+<h2 id="ssh-access-to-app-server">SSH Access to App Server</h2>
+
+<p>Since we need to deploy to our application server, we'll need access to that server!</p>
+
+<p>We'll create an SSH key pair used specifically to access our application servers from the deployment server.</p>
+
+<p>We'll do that as user <code>deployer</code>, the user that will run the Fabric tasks. Let's create the SSH key with no password (leave the password prompts empty).</p>
+
+<pre><code class="bash"># Logged in as user deployer
+cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C "chris@serialapp.com" -f id_seriesdeploy
+</code></pre>
+
+<p>Then copy the pub key to <code>authorized_keys</code> file on web application server for user <code>serial</code>.</p>
+
+<p>Finally we can create/edit the <code>~/.ssh/config</code> file for user <code>deployer</code> in order to log in more easily.</p>
+
+<p>File <code>~/.ssh/config</code>:</p>
+
+<pre><code class="config">Host serial-app
+    HostName 45.55.209.211
+    User serial
+    IdentitiesOnly yes
+    IdetityFile ~/.ssh/id_seriesdeploy
+</code></pre>
+
+<p>Try running the Fabfile command <code>fab deploy</code> to see it deploy!</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

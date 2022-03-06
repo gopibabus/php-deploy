@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Deploying with SCP | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Deploying with SCP</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/zwvyQos4gMw"
+                            title="scp"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="deploying-sites-with-scp">Deploying Sites with SCP</h1>
+
+<p>SCP is "secure copy". It works just like the "cp" command on your server, except it works for copying files between servers (in both directions) and uses SSH.</p>
+
+<pre><code class="bash"># Local "copy" example
+cp src/file dest/file
+
+# Use "scp" to copy files remotely, recursively
+scp -r /some/local/directory  user@ip-address:/path/to/remote/location
+</code></pre>
+
+<p>This is the simplest form of deployment since it's just moving files.</p>
+
+<p>SCP works over SSH, so we can re-use our SSH knowledge to login as well. Let's deploy a simple set of HTML files for an "application":</p>
+
+<pre><code class="bash">cd ~/Sites/serialapp
+scp ./* serial@45.55.209.211:~/serialapp.com/current/public/
+</code></pre>
+
+<p>That didn't work, but we recognize the error (too many login attempts).</p>
+
+<p>We can re-use our SSH options to set the identity key and other options:</p>
+
+<pre><code class="bash"># Use our ssh key
+scp -o "IdentitiesOnly yes" \
+    -i ~/.ssh/id_series \
+    ./* serial@45.55.209.211:~/serialapp.com/current/public/
+</code></pre>
+
+<p>SCP conveniently uses the same options as the SSH command.</p>
+
+<p>That's basically it.</p>
+
+<p>Since we created an aliases in our <code>~/.ssh/config</code> file, we can make this even simpler by using the <code>serial-app</code> host:</p>
+
+<pre><code class="bash">scp ./* serial-app:~/serialapp.com/current/public/
+</code></pre>
+
+<p>And voíla, we get our files uploaded to the server!</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

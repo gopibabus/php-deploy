@@ -1,0 +1,226 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Monitoring the Deploy Services | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Monitoring the Deploy Services</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/7LQZ94gTlLA"
+                            title="upstart systemd"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="upstart-for-nodejs-and-python">Upstart for NodeJS and Python</h1>
+
+<p>We don't want to run and monitor the Node and Python scripts by hand. We want the system to start these services for us!</p>
+
+<p>Let's use Upstart to do this on our Ubuntu servers. I'll also show alternative configurations for those using Systemd (For users of newer Ubuntu, Debian, CentOS, RedHat).</p>
+
+<blockquote>
+  <p>Note that my build server in this video has user <code>appuser</code> instead of <code>deployer</code>. Everything is the same otherwise.</p>
+  
+  <p>Lastly, our NodeJS script is now named <code>builder.js</code> instead of <code>index.js</code>.</p>
+  
+  <p>These changes are consistent with the included Ansible roles which will build the infrastructure created in this video series.</p>
+</blockquote>
+
+<h2 id="node-web-listener%3A">Node Web Listener:</h2>
+
+<p>First, we'll create a service to monitor the NodeJS script. As admin/root, create file <code>/etc/init/deploy-node.conf</code> with the following:</p>
+
+<pre><code>description "NodeJS Web Listener"
+
+start on filesystem or runlevel [2345]
+stop on runlevel [!2345]
+
+setuid appuser
+setgid appuser
+
+env GITHUB_SECRET=bb4610181a2c95fe695db0a5d29ac3098719d39c
+env QUEUE_URL=https://sqs.us-east-1.amazonaws.com/308352032554/serial-deploy
+
+respawn
+respawn limit 5 2
+
+chdir /home/appuser/build-server
+
+script
+    # Start Listener
+    /usr/bin/node builder.js
+end script
+</code></pre>
+
+<p>Then we can start/stop/restart and check the service's status:</p>
+
+<pre><code class="bash"># Ensure it's read
+sudo service deploy-node status
+
+# Start it and check status, ensure PID doesn't change
+# signifying it's failing and getting restarted
+sudo service deploy-node start
+sudo service deploy-node status
+</code></pre>
+
+<h3 id="environment-variables">Environment Variables</h3>
+
+<p>Lastly, let's change our node script <code>builder.js</code> to use Environmental variables:</p>
+
+<pre><code class="javascript">/* near top: */
+var gitHubHandler = createHandler({ path: '/webhook', secret: process.env.GITHUB_SECRET });
+
+/* and later: */
+QueueUrl: process.env.QUEUE_URL
+</code></pre>
+
+<p>After that is done, (re)start the service:</p>
+
+<pre><code class="bash">sudo service deploy-node restart
+</code></pre>
+
+<h2 id="python-queue-listener">Python Queue Listener</h2>
+
+<p>We'll do the same steps here. Let's make the Upstart configuration. Create file <code>/etc/init/deploy-python.conf</code> with the following:</p>
+
+<pre><code>description "Python Queue Listener"
+
+start on filesystem or runlevel [2345]
+stop on runlevel [!2345]
+
+setuid appuser
+setgid appuser
+
+respawn
+respawn limit 5 2
+
+env QUEUE_NAME=serial-deploy
+
+chdir /home/appuser/build-server
+
+pre-start script
+    # Source Python Virtualenv
+    . .venv/bin/activate
+end script
+
+script
+    # Start Python using full or relative
+    # path to the python script
+    /home/appuser/build-server/.venv/bin/python deploy.py 
+end script
+</code></pre>
+
+<p>Then we can start and check it's status:</p>
+
+<pre><code class="bash"># Ensure it's read
+sudo service deploy-py status
+
+# Start it and check status, ensure PID doesn't change
+# signifying it's failing and getting restarted
+sudo service deploy-python start
+sudo service deploy-python status
+</code></pre>
+
+<h2 id="environment-variables">Environment Variables</h2>
+
+<p>Let's use the QUEUE_NAME environment variable used in the Upstart configuration:</p>
+
+<pre><code class="python"># add this
+import os
+
+# adjust this line
+deploy_queue = sqs.get_queue_by_name(QueueName=os.environ['QUEUE_NAME'])
+</code></pre>
+
+<p>After that is done, (re)start the service:</p>
+
+<pre><code class="bash">sudo service deploy-python restart
+</code></pre>
+
+<h2 id="error-checking">Error Checking</h2>
+
+<p>If you check a services status and see the PID (process ID) change, it's a sign the script is failing and upstart is trying to bring it back online.</p>
+
+<p>It will eventually fail after it hits our <code>respawn</code> limits. You can check for output (stdout and stderr) in <code>/var/log/upstart/*.log</code>, where the <code>*</code> is the name of your service. In this case we have two service logs, <code>deploy-node.log</code> and <code>deploy-py.log</code>.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

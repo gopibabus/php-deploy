@@ -1,0 +1,288 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Using Queues with SQS | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Using Queues with SQS</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/NcAXVcq59IU"
+                            title="sqs"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="setup-sqs-in-amazon-to-do-queues">Setup SQS in Amazon to do Queues</h1>
+
+<p>In this video, we expand on our deploy script by adding in a worker queue. It will work like this:</p>
+
+<ol>
+<li>NodeJS will receive a webhook request</li>
+<li>Assuming it's valid, NodeJS adds a job into the queue</li>
+<li>A Python script (<code>deploy.py</code>) reads the queue for new jobs</li>
+<li>When a new job is received, it executes the deploy task we created</li>
+</ol>
+
+<h2 id="aws">AWS</h2>
+
+<p>We'll first create a queue within AWS. This also involves creating a new user and adding in the least amount of permissions needed for this action.</p>
+
+<p>The basic steps are to:</p>
+
+<ol>
+<li>Login into AWS.</li>
+<li>Create a new queue. Note the URL and ARN.</li>
+<li>Create an IAM role/user.</li>
+<li>Assign read/write privileges to that user for our new queue</li>
+</ol>
+
+<p>If the ARN of the qeueue created is <code>arn:aws:sqs:us-east-1:308352032554:serial-deploy</code>, then our user permissions will look like this:</p>
+
+<pre><code class="json">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1425442063002",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage"
+            ],
+            "Resource": [
+                "arn:aws:sqs:us-east-1:308352032554:serial-deploy"
+            ]
+        }
+    ]
+}
+</code></pre>
+
+<h3 id="server-config">Server Config</h3>
+
+<p>On the server, for the <code>deployer</code> user, create a credentials file for the AWS services to use.</p>
+
+<p>Create file <code>~/.aws/credentials</code>:</p>
+
+<pre><code class="ini">[defaults]
+aws_access_key_id=1234567890
+aws_secret_access_key=123456/abcdefghijk
+</code></pre>
+
+<p>Next, inside of <code>~/.aws/config</code>:</p>
+
+<pre><code class="ini">[default]
+region=us-east-1
+output=json
+</code></pre>
+
+<p>The AWS tools (in our case, Boto, the Python AWS SDK and aws-sdk, the NPM package) will automatically find these configuration files.</p>
+
+<h2 id="nodejs">NodeJS</h2>
+
+<p>We'll grab the NodeJS AWS sdk so we can incorporate the queue into the webhook listener.</p>
+
+<pre><code class="bash"># as user deployer
+cd ~/build-server
+npm install --save aws-sdk
+
+vim ~/.aws/credentials
+</code></pre>
+
+<p>Then we'll edit our NodeJS web listener and change the deploy code to add a job into the queue, rather than call the python <code>deploy.py</code> script directly.</p>
+
+<pre><code class="javascript">var express = require('express');
+var app = express();
+
+var createHandler = require('github-webhook-handler')
+var gitHubHandler = createHandler({ path: '/webhook', secret: 'myhashsecret' });
+
+var AWS = require('aws-sdk');
+AWS.config.update({region: 'us-west-1'}); // Must be first
+var sqs = new AWS.SQS();
+
+/**
+ * Use middleware provided by github-webhook-handler
+ * @link https://github.com/rvagg/github-webhook-handler
+ * @link http://expressjs.com/guide/using-middleware.html
+ */
+app.post('/webhook', gitHubHandler, function (req, res)
+{
+    // If we made it this far
+    res.statusCode = 404;
+    res.end('no such location');
+});
+
+/**
+ * A custom webhook for ourselves to call externally
+ *   Perhaps from Slack or another chatroom
+ *   Or from a CI server
+ */
+app.post('/deploy', function (req, res)
+{
+    queue_deploy();
+
+    res.send('Deploying');
+});
+
+/**
+ * Make ExpressJS application listen
+ */
+var server = app.listen(8080, '0.0.0.0', function ()
+{
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('Deployer listening at http://%s:%s', host, port);
+});
+
+/**
+ * Handle Github Webhook events
+ */
+gitHubHandler.on('error', function (err)
+{
+  console.error('Github Webhook Error:', err.message)
+});
+
+gitHubHandler.on('push', function (event)
+{
+    console.log(
+        'Received a push event for %s to %s',
+        event.payload.repository.name,
+        event.payload.ref
+    )
+
+    // Test what our reference actually is!
+    if( event.payload.ref == 'refs/heads/master' )
+    {
+        queue_deploy();
+    }
+});
+
+/**
+ * Do the actual application deploment
+ * @return null
+ */
+function queue_deploy(ref)
+{
+    if( typeof ref == "undefined" )
+    {
+        ref = 'master';
+    }
+
+    var params = {
+        MessageBody: JSON.stringify({
+            time: Math.floor(new Date() / 1000),
+            reference: ref
+        }),
+        QueueUrl: 'https://sqs.us-east-1.amazonaws.com/30852032554/serial-deploy'
+    };
+
+    sqs.sendMessage(params, function(err, data) 
+    {
+        if (err)
+        {
+            console.log(err, err.stack);
+        } else
+        {
+            console.log('Job Sent', data);
+        }
+    });
+}
+</code></pre>
+
+<p>After we modify our <code>index.js</code> file, we can run it and try to kick off a deployment by sending a POST request to it:</p>
+
+<pre><code class="bash"># In one session
+node index.js
+# In another terminal session
+curl -X POST http://104.236.246.253:8080/deploy
+</code></pre>
+
+<p>We'll see it deploys! We can see it add a job to the queue. This will appear in your SQS control panal as well.</p>
+
+<p>In the next video, we'll adjust the <code>deploy.py</code> script to listen for new queue jobs.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

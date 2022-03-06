@@ -1,0 +1,404 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>GitHub Webhooks | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>GitHub Webhooks</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/tew0tAx3y0o"
+                            title="github web hooks"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="integrating-github-webhooks">Integrating GitHub Webhooks</h1>
+
+<p>We'll use a NodeJS package to help us securely listen for GitHub webhooks.</p>
+
+<pre><code class="bash"># as user deployer
+cd ~/build-server
+npm install --save github-webhook-handler
+</code></pre>
+
+<p>Once that's installed, we can build on our web listener!</p>
+
+<p>Let's also make a "Secret", which GitHub and this NodeJS package use to ensure webhooks received are legimiately from GitHub.</p>
+
+<p>On my local Mac, I ran the following, curtesy of GitHub's docs:</p>
+
+<pre><code class="bash">ruby -rsecurerandom -e 'puts SecureRandom.hex(20)'
+</code></pre>
+
+<p>This gave me a long, random string, which I used as the application secret.</p>
+
+<p>Within GitHub, in our repository, we can fill out what we need so GitHub sends webhooks to our listening NodeJS application. These are per-project settings under Settings > Webhooks and Services > Webhook.</p>
+
+<ul>
+<li><strong>Payload URL:</strong> http://104.236.246.253:8080/webhook</li>
+<li><strong>Content Type:</strong> application/json</li>
+<li><strong>Secret:</strong> Long string we just generated</li>
+</ul>
+
+<p>We can then add this to our NodeJS application as well. Note that we use <code>/webhook</code> as the URI end point and we add in the secret we created:</p>
+
+<pre><code class="javascript">var express = require('express');
+var app = express();
+
+var exec = require('child_process').exec;
+
+var createHandler = require('github-webhook-handler')
+var gitHubHandler = createHandler({ path: '/webhook', secret: 'myhashsecret' });
+
+/**
+ * Use middleware provided by github-webhook-handler
+ * @link https://github.com/rvagg/github-webhook-handler
+ * @link http://expressjs.com/guide/using-middleware.html
+ */
+app.post('/webhook', gitHubHandler, function (req, res)
+{
+    // If we made it this far
+    res.statusCode = 404;
+    res.end('no such location');
+});
+
+/**
+ * A custom webhook for ourselves to call externally
+ *   Perhaps from Slack or another chatroom
+ *   Or from a CI server
+ */
+app.post('/deploy', function (req, res) {
+    var deployment = deploy_app();
+
+    deployment.on('exit', function(code, signal)
+    {
+        if( code &gt; 0 )
+        {
+            console.log('Deployment ended in error', deployment.stderr)
+        } else {
+            console.log('Deployment succeeded')
+        }
+    });
+
+    res.send('Deploying');
+});
+
+/**
+ * Make ExpressJS application listen
+ */
+var server = app.listen(8080, '0.0.0.0', function () {
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('Deployer listening at http://%s:%s', host, port);
+});
+
+/**
+ * Handle Github Webhook events
+ */
+gitHubHandler.on('error', function (err) {
+  console.error('Github Webhook Error:', err.message)
+});
+
+gitHubHandler.on('push', function (event) {
+    console.log(
+        'Received a push event for %s to %s',
+        event.payload.repository.name,
+        event.payload.ref
+    )
+
+    // Test what our reference actually is!
+    if( event.payload.ref == 'refs/heads/master' )
+    {
+        deploy_app();
+    }
+});
+
+/**
+ * Do the actual application deploment
+ * @return null
+ */
+function deploy_app()
+{
+    var options = {
+        cwd: '/home/deployer/build-server',
+        shell: '/bin/bash',
+        maxBuffer: 1048576 // One MB
+        // uid: //deployer
+        // gid: // deployer
+    };
+
+    var childProcess = exec(
+        'source .venv/bin/activate &amp;&amp; python deploy.py',
+        options,
+        function(error, stdout, stderr)
+        {
+            // Possibly log stdout/stderr
+            // Do error checking
+            console.log(error, stdout, stderr)
+        });
+
+    return childProcess;
+}
+</code></pre>
+
+<p>We can turn this on via <code>node index.js</code>. If we push to our GitHub repository, that should kick off a deployment!</p>
+
+<h2 id="security">Security</h2>
+
+<p>In order for GitHub to be able to reach our server, listening at port 880, we need to adjust Iptables to open that port to incoming traffic. That can be done with the following command:</p>
+
+<pre><code class="bash"># As user admin, who can use "sudo"
+sudo iptables -I INPUT 5 -p tcp --dport 8080 -j ACCEPT
+sudo service iptables save
+</code></pre>
+
+<!--
+```javascript
+var express = require('express');
+var app = express();
+
+var createHandler = require('github-webhook-handler')
+var gitHubHandler = createHandler({ path: '/webhook', secret: 'myhashsecret' });
+
+var Deployment = require('./lib/deployment.js');
+
+/**
+ * Use middleware provided by github-webhook-handler
+ * @link https://github.com/rvagg/github-webhook-handler
+ * @link http://expressjs.com/guide/using-middleware.html
+ */
+app.use(function (req, res, next) {
+    gitHubHandler(req, res, function (err) {
+        if( req.url == '/deploy' )
+        {
+            return next();
+        }
+        res.statusCode = 404
+        res.end('no such location')
+    });
+    next();
+});
+
+/**
+ * A custom webhook for ourselves to call externally
+ *   Perhaps from Slack or another chatroom
+ *   Or from a CI server
+ */
+app.post('/deploy', function (req, res) {
+    var deployment = deploy_app();
+
+    deployment.on('exit', function(code, signal)
+    {
+        if( code > 0 )
+        {
+            console.log('Deployment ended in error', deployment.stderr)
+        } else {
+            console.log('Deployment succeeded')
+        }
+    });
+
+    res.send('Deploying');
+});
+
+/**
+ * Make ExpressJS application listen
+ */
+var server = app.listen(8080, function () {
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('Deployer listening at http://%s:%s', host, port);
+});
+
+/**
+ * Handle Github Webhook events
+ */
+gitHubHandler.on('error', function (err) {
+  console.error('Github Webhook Error:', err.message)
+})
+
+gitHubHandler.on('push', function (event) {
+    console.log(
+        'Received a push event for %s to %s',
+        event.payload.repository.name,
+        event.payload.ref
+    )
+
+    // Test what our reference actually is!
+    if( event.payload.ref == 'master' )
+    {
+        deploy_app();
+    }
+})
+
+/**
+ * Do the actual application deploment
+ * @return null
+ */
+function deploy_app()
+{
+    var deployment = new Deployment();
+
+    deployment.child = childProcess;
+
+    return deployment;
+}
+```
+
+Track a deployment:
+
+```javascript
+var EventEmitter = require('events').EventEmitter;
+var exec = require('child_process').exec;
+
+function Deployment()
+{
+    EventEmitter.call(this)
+
+    this.time   = new Date();
+    this.error  = false;
+    this.stdout = false;
+    this.stderr = false;
+    this.child  = false;
+    this.signal = false;
+    this.code   = false;
+}
+
+Deployment.prototype = Object.create(EventEmitter.prototype);
+
+Deployment.prototype.child = function(child)
+{
+    this.child = child;
+}
+
+Deployment.prototype.run = function()
+{
+    var _this = this;
+
+    var options = {
+        cwd:       '/home/deployer/build-server',
+        shell:     '/bin/bash',
+        maxBuffer: 1048576 // One MB
+        // uid: //deployer
+        // gid: // deployer
+    };
+
+    var childProcess = exec(
+        'source .venv/bin/activate && python deploy.py',
+        options,
+        function(error, stdout, stderr)
+        {
+            _this.output(error, stdout, stderr);
+        });
+
+    childProcess.on('exit', function(code, signal)
+    {
+        _this.exit(code, signal);
+    });
+
+    return _this;
+}
+
+Deployment.prototype.output = function(error, stdout, stderr)
+{
+    this.error = error;
+    this.stdout = stdout;
+    this.stderr = stderr;
+
+    this.emit('output', error, stdout, stderr);
+}
+
+Deployment.prototype.exit = function(code, signal)
+{
+    this.code = code;
+    this.signal = signal;
+
+    this.emit('exit', code, signal);
+}
+
+module.exports = Deployment;
+```
+-->
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

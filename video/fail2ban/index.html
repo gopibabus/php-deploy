@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Fail2Ban | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Fail2Ban</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/1mzq5tW9gYM"
+                            title="fail2ban"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="monitoring-login-attempts">Monitoring Login Attempts</h1>
+
+<p>Let's get a tad more security, and learn more about iptables chains, by installing Fail2Ban.</p>
+
+<p>First, we'll install and configure Fail2Ban. This means installing it, and then copying the <code>jail.conf</code> file over to <code>jail.local</code>.</p>
+
+<pre><code class="bash">sudo apt-get install -y fail2ban
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+sudo service fail2ban reload
+</code></pre>
+
+<p>We enable Fail2Ban by creating a <code>jail.local</code> file. By default, Fail2Ban is setup to monitor your <code>/var/log/auth.log</code> file for failed SSH logins. It will ban a host from accessing the server after 6 failed login attempts.</p>
+
+<p>You can check it to see if there are other rules you'd like to enable, such as monitoring Nginx or Apache for too many failed HTTP basic auth attempts, or go deeper by defining your own filters and ban rules.</p>
+
+<p>For now, we'll just check for SSH attempts (the default settings).</p>
+
+<p>You can see some actions taken in the fail2ban log, if any have been taken:</p>
+
+<pre><code class="bash">sudo tail -f /var/log/fail2ban.log
+</code></pre>
+
+<h2 id="fail2ban-and-iptables">Fail2Ban and Iptables</h2>
+
+<p>Fail2Ban makes use of Iptables to accomplish banning hosts who meet specified threshold.</p>
+
+<p>Check out the iptables after installing and configuring Fail2ban:</p>
+
+<pre><code class="bash">sudo iptables -L -v
+</code></pre>
+
+<p>We'll see something like the following:</p>
+
+<pre><code>Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+pkts bytes target prot opt in out source destination
+123K 123M Fail2Ban-ssh tcp -- any any anywhere anywhere multiport dports\ ssh
+292K 169M ACCEPT tcp -- any any anywhere anywhere tcp dpt:http
+... additional omitted ...
+
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+ ... omitted ...
+
+Chain OUTPUT (policy ACCEPT 939K packets, 2332M bytes)
+ ... omitted ...
+
+Chain Fail2Ban-ssh (1 references)
+ pkts bytes target     prot opt in     out     source     destination
+1962K 1498M RETURN     all  --  any    any     anywhere   anywhere
+</code></pre>
+
+<p>We see a new chain <code>Fail2Ban-ssh</code>. This chain will be added to in order to block traffic from hosts attempting to log in over SSH.</p>
+
+<p>Essentially all incoming traffic is checked against the new <code>Fail2Ban-ssh</code> chain. If a host was banned (for too many incorrect SSH attempts), then there will be a rule in tha new Fail2Ban-ssh chain telling iptables to drop or deny that traffic.</p>
+
+<p>If the traffic is not blocked, it RETURN's to where it came from (back to the INPUT chain) to be matched against the remaining rules.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

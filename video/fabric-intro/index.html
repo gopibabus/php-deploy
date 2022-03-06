@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Introducing Fabric | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Introducing Fabric</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/pmow8mP3Ih8"
+                            title="fabric intro"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="fabric-basics">Fabric Basics</h1>
+
+<p>When we left off, we had git on our servers. We can update our application by manually running <code>git pull origin master</code>:</p>
+
+<pre><code class="bash"># Login
+ssh serial-app
+
+# Then pull in the latest code
+cd ~/serialapp.com/current/repo
+# Get the latest &amp; update composer dependencies
+git pull origin master
+composer update
+</code></pre>
+
+<p>Let's automate this process using Fabric, an SSH task runner.</p>
+
+<h3 id="pip-and-virtualenv">Pip and Virtualenv</h3>
+
+<p>To install Fabric, we can use first install pip, and then either install fabric globally or within a virtual environment:</p>
+
+<pre><code class="bash"># Install pip
+sudo easy_install pip
+# Update pip
+sudo pip install -U pip
+# Install virtualenv
+sudo pip install virtualenv
+
+# Install `fabric` globally
+sudo pip install fabric
+
+# or install in a virtualenv
+virtualenv .venv
+source .venv/bin/activate
+pip install fabric
+</code></pre>
+
+<h2 id="fabric">Fabric</h2>
+
+<p>We've installed Fabric in our virtualenv, now we can create the <code>fabfile.py</code> in the project root and run it:</p>
+
+<pre><code class="python">from __future__ import with_statement
+from fabric.api import cd run env
+from fabric.decorators import task
+
+env.use_ssh_config = True
+env.hosts = ['serial-app']
+# env.hosts = ['45.55.209.211']
+# env.user = 'serial'
+# env.key_filename = '~/.ssh/id_series'
+
+@task
+def deploy():
+    # Change into repository directory
+    with cd('/home/serial/serialapp.com/current/repo'):
+        # Update git repository
+        # assuming we got into the directory
+        run('git pull origin master')
+        run('composer install')
+</code></pre>
+
+<p>Push up some changes to git and then run <code>fab deploy</code> to run the <code>deploy</code> task!</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

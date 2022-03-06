@@ -1,0 +1,158 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>SSH Security | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>SSH Security</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/UnKa-USiqH4"
+                            title="ssh-security"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="securing-your-server">Securing Your Server</h1>
+
+<p>Now that we've created users and added the ability to connect to them via SSH keys, we can setup some additional security around server access.</p>
+
+<p>We'll change some configuration of how SSH allows itself to be connected to on our web application server.</p>
+
+<h2 id="log-in">Log In</h2>
+
+<p>First, if you are not logged into your server, we can do so using our ssh keys:</p>
+
+<pre><code class="bash">ssh -o "IdentitiesOnly yes" -i ~/.ssh/id_series root@45.55.209.211
+</code></pre>
+
+<p>We're logged in as user root (for now), so we can make the following changes easily.</p>
+
+<h2 id="check-out-sshd-config-on-server%3A">Check out SSHD Config on server:</h2>
+
+<p>We want to edit the SSHD (d for daemon) configuration file on the server. The daemon is the SSH process that allows external connections.</p>
+
+<pre><code>sudo vim /etc/ssh/sshd_config
+</code></pre>
+
+<p>Some interesting items you may see:</p>
+
+<pre><code># Permit root login?
+PermitRootLogin without-password  # PW auth disabled, but ssh keys are allowed
+
+# General SSH - password auth disabled
+PasswordAuthentication no         # Key-only in general
+</code></pre>
+
+<blockquote>
+  <p>Read more about these available options using <code>man sshd_config</code>.</p>
+</blockquote>
+
+<h2 id="turn-off-root-user-login%3A">Turn off Root User login:</h2>
+
+<p>We don't want the root user to be able to login over SSH. Instead, we want to enforce the use of the admin user to log in, as they need a user password to run sudo commands. This provides an extra layer of security that simply logging in as the root user does not provide.</p>
+
+<pre><code># Set to no
+PermitRootLogin no
+
+# Also, if applicable, e.g. on AWS
+# Deny the user "ubuntu", "ec2-user", "centos" (and so on)
+#  Appicable on AWS which creates a user who can run sudo
+#  commands with out a password
+DenyUsers ubuntu
+</code></pre>
+
+<h2 id="turn-off-password-based-login">Turn off Password-based login</h2>
+
+<p>Next we'll disallow logging in using a password altogether. Users will <em>only</em> be able to login in using SSH keys.</p>
+
+<pre><code>PasswordAuthentication no
+</code></pre>
+
+<h2 id="restart-ssh">Restart SSH</h2>
+
+<p>After saving the changes to the configuraiton file, restart the SSH daemon:</p>
+
+<pre><code class="bash">sudo service ssh restart
+</code></pre>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

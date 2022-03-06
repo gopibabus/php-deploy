@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Deploying with Rsync | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Deploying with Rsync</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/RwuPteY0Wf8"
+                            title="rsync"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="rsync">Rsync</h1>
+
+<p>In the previous video, we used <code>scp</code> to do a secure copy. Now let's try something a little more sophisticated: <code>rsync</code>.</p>
+
+<p>Rsync will only copy <strong>changed</strong> files to remote servers. It uses SSH as well.</p>
+
+<p>Let's use rsync AND create a script so we can start automated these commands. Create file <code>publish.sh</code>:</p>
+
+<pre><code class="bash">#! /usr/bin/env bash
+
+rsync -vzcrSLh --exclude="publish.sh" --exclude=".git" \
+    ./ serial-app:~/serialapp.com/current/public
+
+# The options:
+# v - verbose
+# z - compress data
+# c - checksum, use checksum to find file differences
+# r - recursive
+# S - handle sparse files efficiently
+# L - follow links to copy actual files
+# h - show numbers in human-readable format
+# --exclude - Exclude files from being uploaded. You can use multiple --exclude flags
+
+# Or, run the command as a dry run, so no files are sent and you can preview the changes:
+rsync -vzcrSLh --exclude="publish.sh" --exclude=".git" \
+    --dry-run \
+    ./ series-app:~/serialapp.com/current/public
+</code></pre>
+
+<p>This can save bandwidth and speed up deployments. Rsync works both ways as well.</p>
+
+<p>If you need or want to pass SSH options, you can use the <code>-e</code> flag along with what looks like a "normal" ssh command:</p>
+
+<pre><code class="bash">rsync -vzcrSLh \
+       -e "ssh -i /home/fideloper/.ssh/id_series -o IdentitiesOnly yes" \
+       --exclude="publish.sh" \
+       --exclude=".git" \
+       ./ serial-app:~/serialapp.com/current/public
+</code></pre>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Sudoers &amp; Sudo | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Sudoers &amp; Sudo</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/Y4h0AWjFrhQ"
+                            title="sudoers"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="sudoers">Sudoers</h1>
+
+<p>We want the <code>serial</code> user to be able to restart/reload PHP-FPM. This requires <code>sudo</code>, but user <code>serial</code> is not a sudo user. Even if that user was, we'd need a sudo password.</p>
+
+<p>Let's fix that.</p>
+
+<p>Log into the remote server as user <code>admin</code>, then run the following:</p>
+
+<pre><code class="bash">sudo visudo
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>serial ALL(ALL:ALL) NOPASSWD:/usr/sbin/service php5-fpm restart,/usr/sbin/service php5-fpm reload
+</code></pre>
+
+<p>Then user <code>serial</code> will be able to restart and reload PHP5-FPM, using sudo, without a password!</p>
+
+<p>This lets us add the <code>sudo service php5-fpm reload</code> command to be run without a password, letting us automate this. Let's try that out in our <code>fabfile.py</code>:</p>
+
+<pre><code class="python">from __future__ import with_statement
+from fabric.api import local, env, run, cd
+from fabric.decorators import task
+
+env.use_ssh_config = True
+env.hosts = ['serial-app']
+# env.hosts = ['45.55.209.211']
+# env.user = 'serial'
+# env.key_filename = '~/.ssh/id_series'
+
+@task
+def deploy():
+    # Change into repository directory
+    with cd('/home/serial/serialapp.com/current/repo'):
+        # Update git repository
+        # assuming we got into the directory
+        run('git pull origin master')
+        # Reload PHP5-FPM gracefully
+        run('sudo service php5-fpm reload')
+</code></pre>
+
+<p>Once that's saved you should be able to run <code>fab deploy</code> and see it reload the <code>php5-fpm</code> service.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>The Application Server | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>The Application Server</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/Em0bqEwAwTc"
+                            title="application server"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="setup-an-application-server">Setup an Application Server</h1>
+
+<p>We'll start by creating a production server which will run a PHP applicaiton. This will be a server we deploy an application to.</p>
+
+<h2 id="install">Install</h2>
+
+<p>Let's install all the things specific to our PHP application.</p>
+
+<pre><code class="bash"># Ensure basics are installed (already done earlier)
+sudo apt-get install -y vim curl tmux wget unzip htop
+
+# Add repositories for latest software
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y ppa:nginx/stable
+sudo add-apt-repository -y ppa:ondrej/php5-5.6
+
+# Update and install Nginx + PHP
+sudo apt-get update
+
+sudo apt-get install -y nginx php5-fpm php5-cli php5-mcrypt php5-curl \
+                              php5-mysql php5-pgsql php5-sqlite \
+                              php5-gd php5-memcached \
+                              mysql-server-5.6
+
+sudo mysql_secure_installation
+</code></pre>
+
+<h2 id="configure-php">Configure PHP</h2>
+
+<p>Let's configure PHP-FPM to run as our login-user:</p>
+
+<p>Copy file <code>/etc/php5/fpm/pool.d/www.conf</code> to <code>/etc/php5/fpm/pool.d/series.conf</code>.</p>
+
+<p>Adjust the following items:</p>
+
+<pre><code class="ini">[series] # Instead of [www]
+
+user = serial
+group = serial
+
+listen: /var/run/php5-fpm-serial.sock
+</code></pre>
+
+<p>We've setup a separate php-fpm pool for user <code>serial</code> to use for it's applications. Let's reload PHP5-FPM to let that take affect:</p>
+
+<pre><code class="bash">sudo service php5-fpm restart
+</code></pre>
+
+<h2 id="configure-nginx">Configure Nginx</h2>
+
+<p>Copy default:</p>
+
+<pre><code class="bash">cd /etc/nginx/sites-available
+sudo cp default serial
+</code></pre>
+
+<p>Remove default site from "enabled":</p>
+
+<pre><code class="bash">sudo rm /etc/nginx/sites-enabled/default
+</code></pre>
+
+<p>Enable our new one:</p>
+
+<pre><code class="bash">sudo ln -s /etc/nginx/sites-available/serial /etc/nginx/sites-enabled/serial
+</code></pre>
+
+<p>Edit the default to run our new site:</p>
+
+<pre><code class="nginx">server {
+    listen 80 default_server;
+
+    index index.htm index.html index.php;
+
+    root /home/serial/serialapp/current/public;
+
+    server_name serialapp.com www.serialapp.com serialapp.dev;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php5-fpm-serial.sock;
+    }
+}
+</code></pre>
+
+<p>We should make the directory that this points to:</p>
+
+<pre><code class="bash">sudo mkdir -p /home/serial/serialapp/current/public
+</code></pre>
+
+<p>Then we can add a default file in that location to serve as we get started.</p>
+
+<p>Create file <code>/home/serial/serialapp/current/public/index.php</code> with the following content:</p>
+
+<pre><code class="php">&lt;?php
+phpinfo();
+</code></pre>
+
+<p>Then test and reload our configuration:</p>
+
+<pre><code class="bash">sudo -u serial mkdir ~/serialapp/current/public
+
+sudo service nginx configtest
+sudo service nginx reload
+</code></pre>
+
+<p>You should be able to see the <code>phpinfo()</code> dump when you head to your server in the browser.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

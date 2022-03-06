@@ -1,0 +1,222 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Downtime &amp; Symlinks | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Downtime &amp; Symlinks</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/TwXf3uulmT8"
+                            title="symlinks"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="using-symlinks-for-a-zero-downtime-deployment">Using Symlinks for a Zero-downtime Deployment</h1>
+
+<p>We'll be automating a deployment strategy with Fabric. However, first, let's see what that process is by doing it manually.</p>
+
+<p>Log into the server as user admin, who can use <code>sudo</code>.</p>
+
+<h2 id="nginx">Nginx</h2>
+
+<p>Let's change the root directory back to what we had a few videos ago.</p>
+
+<pre><code class="nginx">server {
+    # Items skipped for brevity
+
+    root /home/serial/serialapp.com/current/public;
+
+    # Items skipped for brevity
+}
+</code></pre>
+
+<p>We changed the <code>root</code> directory from the repository (<code>/home/serial/serialapp.com/repo/public</code>) to the <code>current/public</code> directory, where our deployed files will live.</p>
+
+<p>Test and reload Nginx after that change:</p>
+
+<pre><code class="bash">sudo service nginx configtest
+sudo service nginx reload
+</code></pre>
+
+<h2 id="deployment-with-symlinks">Deployment with Symlinks</h2>
+
+<p>Log in as the <code>serial</code> user and head to our project directory at <code>~/serialapp.com</code>.</p>
+
+<h3 id="github-repo">Github Repo</h3>
+
+<p>We'll move the github repo to be one level up, so we end up with:</p>
+
+<pre><code>~/serialapp.com
+|-- current
+|-- -- public
+|-- repo
+</code></pre>
+
+<p>The steps to do that:</p>
+
+<pre><code class="bash">cd ~/serialapp.com
+mv current/repo ./
+</code></pre>
+
+<h3 id="persist-directory">Persist Directory</h3>
+
+<p>Next we want to create a directory where files that should persist across deployments should live. These will be environment files, cache file, log files and similar.</p>
+
+<pre><code class="bash">cd ~/serialapp.com
+mkdir persist
+</code></pre>
+
+<p>And move our application's .env file there:</p>
+
+<pre><code class="bash">cd ~/serialapp.com
+mv repo/.env persist/.env
+</code></pre>
+
+<p>And then we'll take our Laravel application's <code>storage</code> directory, which contains cache and log files that we don't want to lose in deployments:</p>
+
+<pre><code class="bash">cd ~/serialapp.com
+cp -r repo/storage ./persist/
+</code></pre>
+
+<h3 id="releases">Releases</h3>
+
+<p>We want a place to put the code that we'll use for each release (each deployment). We'll simply name this the <code>releases</code> directory:</p>
+
+<pre><code class="bash">cd ~/serialapp.com
+mkdir releases
+</code></pre>
+
+<h2 id="build-process">Build Process</h2>
+
+<p>We have files in place now, let's see the manual steps to take in order to deploy.</p>
+
+<pre><code class="bash">cd ~/serialapp.com/repo
+
+# Get the latest code
+git pull origin master
+
+# We'll build a deployment in a new directory which has a timestamp
+# as a name. In this case, dir name 1436408501
+mkdir ~/serialapp.com/releases/`php -r "echo time();"`
+
+# Build an archive of the site
+cd ~/serialapp.com/repo
+git archive --worktree-attributes master | tar -x -C ~/serialapp.com/releases/1436408501
+
+# Double check that the files are now in our
+# new release directory
+ls -lah ~/serialapp.com/releases/1436408501
+
+# Clear our storage, since we want to use our 
+# storage from "persist"
+rm -rf ~/serialapp.com/releases/1436408501/storage
+
+# Create symlinks to symlink needed files to the latest release
+#
+## Symlink our .env file
+ln -nfs ~/serialapp.com/persist/.env ~/serialapp.com/releases/1436408501/.env
+## Symlink our storage directory
+ln -nfs ~/serialapp.com/persist/storage ~/serialapp.com/releases/1436408501/storage
+## Finally get it up and running in "current" dir
+## This is setting us up to use our Nginx web root
+ln -nfs ~/serialapp.com/releases/1436408501 ~/serialapp.com/current
+
+## Build our application composer dependencies
+cd ~/serialapp.com/releases/1436408501
+php composer install
+</code></pre>
+
+<p>And that's it! On our next release, we would:</p>
+
+<ol>
+<li>Make a new timestamp release directory</li>
+<li>Get the latest code in the Git repo</li>
+<li>Use <code>git archive</code> to get a copy of the site at that commit to our new release directory</li>
+<li>Build composer dependencies in that directory</li>
+<li>Symlink the <code>.env</code>, <code>storage</code> and finally <code>current</code> directory to make the latest code live</li>
+</ol>
+
+<p>Moving on, we'll automate this process in Fabric.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

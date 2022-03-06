@@ -1,0 +1,186 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>The Web Listener | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>The Web Listener</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/FSE6Zs-L81w"
+                            title="web listener"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="listening-for-github-webhooks">Listening for Github Webhooks</h1>
+
+<p>We'll use NodeJS to create a simple web listener. It will listen for web hooks and kick off a build of the Fabric script.</p>
+
+<h2 id="nodejs-web-listener">NodeJS Web Listener</h2>
+
+<p>We'll install some dependencies so make listening for webhooks easier. Log into the build server as user <code>deployer</code> and run the following:</p>
+
+<pre><code class="bash">cd ~/build-server
+npm init
+# Install Express web framework
+npm install --save express
+</code></pre>
+
+<p>Edit <code>index.js</code> to do some web hook listening:</p>
+
+<pre><code class="javascript">var express = require('express');
+var app = express();
+
+var exec = require('child_process').exec;
+
+/**
+ * A custom webhook for ourselves to call externally
+ *   Perhaps from Slack or another chatroom
+ *   Or from a CI server
+ */
+app.post('/deploy', function (req, res) {
+    deploy_app()
+    res.send('Deploying');
+});
+
+/**
+ * Make ExpressJS application listen
+ */
+var server = app.listen(8080, '0.0.0.0',function () {
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('Deployer listening at http://%s:%s', host, port);
+});
+
+/**
+ * Do the actual application deploment
+ * @return null
+ */
+function deploy_app()
+{
+    var options = {
+        cwd: '/home/deployer/build-server',
+        shell: '/bin/bash',
+        maxBuffer: 1048576 // One MB
+        // uid: //deployer
+        // gid: // deployer
+    };
+
+    var childProcess = exec(
+        'source .venv/bin/activate &amp;&amp; python deploy.py',
+        options,
+        function(error, stdout, stderr)
+        {
+            // Possibly log stdout/stderr
+            // Do error checking
+            console.log(error, stdout, stderr)
+        });
+
+    return childProcess;
+}
+</code></pre>
+
+<p>Note that we're sourcing our Python virtualenv and then running the <code>deploy.py</code> script.</p>
+
+<p>Then we can try running this.</p>
+
+<pre><code class="bash"># I use tmux and split the screen via ctrl+b, shift+6
+tmux
+
+# On the right panel:
+node index.js
+
+# On the left panel:
+curl -X POST localhost:8080/deploy
+</code></pre>
+
+<p>We'll see the deployment outout on the right, since the output of the python command (Fabfile) is output via <code>console.log</code> in our NodeJS code.</p>
+
+<h2 id="resources">Resources</h2>
+
+<ul>
+<li><a href="https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback">NodeJS docs on <code>exec</code></a>, including buffer size limit and using bash over sh.</li>
+</ul>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

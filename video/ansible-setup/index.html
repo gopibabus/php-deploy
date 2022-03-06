@@ -1,0 +1,580 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Ansible Quickstart | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>Ansible Quickstart</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/QZz-lqV39Xs"
+                            title="ansible"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <p>Included is a collection of Ansible Groups, put together to build the following:</p>
+
+<ol>
+<li>A load balancer</li>
+<li>1-n web nodes (to sit behind the load balancer)</li>
+<li>A build server setup to automate deployments</li>
+</ol>
+
+<p>Let's see how to use this.</p>
+
+<h2 id="install-ansible">Install Ansible</h2>
+
+<p>On <strong>Macintosh</strong>, we can install Ansible doing the following:</p>
+
+<pre><code class="bash"># Using Brew (recommended)
+# This assumes you have Homebrew installed already
+brew update
+brew install ansible
+
+# Using Python only
+sudo easy_install pip
+sudo pip install -U pip
+sudo pip install ansible
+</code></pre>
+
+<p>On <strong>RedHat/CentOS</strong>, we can do the following after adding the EPEL repository:</p>
+
+<pre><code class="bash"># Install using package manager
+sudo yum install epel-release
+sudo yum install ansible
+
+# Or install pip via package manager
+sudo yum install epel-release
+sudo yum install python-pip
+sudo pip install -U pip
+sudo pip install Ansible
+
+# Or via Python only, if
+# easy_install is on the server
+sudo easy_install pip
+sudo pip install -U pip
+sudo pip install ansible
+</code></pre>
+
+<p>On <strong>Debian/Ubuntu</strong> you can install via pip:</p>
+
+<pre><code class="bash"># Via package manager
+sudo apt-get install -y python-pip
+sudo pip install -U pip
+sudo pip install ansible
+
+# Or via Python only
+sudo easy_install pip
+sudo pip install -U pip
+sudo pip install ansible
+</code></pre>
+
+<p>On <strong>Ubuntu</strong> (<em>not</em> Debian), you can also install it via a PPA repository:</p>
+
+<pre><code class="bash">sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y ppa:ansible/ansible
+sudo apt-get update
+sudo apt-get install ansible
+</code></pre>
+
+<h2 id="setup-servers-and-hosts">Setup Servers and Hosts</h2>
+
+<p>Assuming you have 3+ new servers, rename the <code>hosts.dist</code> file to <code>hosts</code> and fill out the servers. Depending on what platform you use and usernames you are given, adjust the SSH user to log in as.</p>
+
+<p>Let's pretend we have 4 servers and know their IP addresses. We can fill out the <code>hosts</code> file like this:</p>
+
+<pre><code class="ini">[load_balancer]
+142.54.87.123  ansible_ssh_user=ubuntu
+
+[web]
+142.54.87.124  ansible_ssh_user=ubuntu
+142.54.87.125  ansible_ssh_user=ubuntu
+
+[build_server]
+142.54.87.126  ansible_ssh_user=ubuntu
+</code></pre>
+
+<p>On AWS, the provided Ubuntu image comes with a sudo user named "ubuntu". We'll use that user when provisioning the server with Ansible.</p>
+
+<h2 id="ssh-keys">SSH Keys</h2>
+
+<p>We'll need to create some SSH keys to be used in various ways:</p>
+
+<ol>
+<li>An SSH key used to allow your work station to access all servers.</li>
+<li>An SSH key used on each Web Server to access GitHub.</li>
+<li>An SSH key used by the Build Server to access each Web Server.</li>
+</ol>
+
+<p>We'll create these three SSH keys and then add them to our Ansible variables as needed.</p>
+
+<h3 id="local-key">Local Key</h3>
+
+<p>We'll make an SSH keypair to access each server. We could also use an already-existing key on your local computer, such as <code>~/.ssh/id_rsa</code>.</p>
+
+<p>This key will be used so allow you to login to each server, useful for maintenance or debugging.</p>
+
+<blockquote>
+  <p>I'm assuming you're using a Mac or *nix variety computer.</p>
+</blockquote>
+
+<p>Make a new key:</p>
+
+<pre><code class="bash">cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C you@your-domain.com -f id_myapp
+</code></pre>
+
+<p>You can create this with or without a password. Adding a password is always more secure. Note the filename created here via <code>-f</code>. We'll be adding the public key (e.g.<code>id_myapp.pub</code>) file content to the <code>authorized_keys</code> file for each user on each server so we can access the servers.</p>
+
+<p>The private key we generate here will stay within the <code>~/.ssh</code> directory of our local computer.</p>
+
+<h3 id="github-key">GitHub Key</h3>
+
+<p>We'll make another key locally, but this one will be used by our web servers instead of our local computer.</p>
+
+<pre><code class="bash">cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C you@your-domain.com -f id_github
+</code></pre>
+
+<p>This SSH key must NOT be given a password. We won't have the opportunity to provide a password with automated deployments.</p>
+
+<p>The private key generated (<code>~/.ssh/id_github</code>) will be added to each web server. The public key (<code>~/.ssh/id_github.pub</code>) will be added to GitHub for the repository we are deploying. This allows each web server to access GitHub, which will be required for this deployment scenario.</p>
+
+<h3 id="build-server-key">Build Server Key</h3>
+
+<p>We'll make our final key. This SSH key will be used by the Build Server to access the Web Servers and run tasks on them.</p>
+
+<pre><code class="bash">cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C you@your-domain.com -f id_internal
+</code></pre>
+
+<p>The private key generated (<code>~/.ssh/id_internal</code>) will be added to the Build Server's user responsible for listening for webhooks and kicking off deploys.</p>
+
+<p>The public key (<code>~/.ssh/id_internal.pub</code>) will be added to each Web Server <code>authorized_keys</code> file. This gives the Build Server the ability to run tasks on the Web Servers.</p>
+
+<p>Only the user used to run and deploy the application will allow this access. For example, if user <code>appuser</code> runs the application, then <code>/home/appuser/.ssh/authorized_keys</code> is where the <code>id_internal</code> public key is added (it's the user the Build Server has access to run tasks as).</p>
+
+<h2 id="ansible-variables">Ansible Variables</h2>
+
+<p>We're going to populate the <code>group_vars</code> needed to run the roles and get started. This will use some information we haven't yet retrieved along with the SSH keys created in the steps above.</p>
+
+<p>Each group variable file directly corresponds to a group defined in the <code>hosts</code> file. The <code>all</code> file is a special one in that it provides variables for every host group.</p>
+
+<p>Files to populate:</p>
+
+<ol>
+<li><strong>group_vars/all</strong></li>
+<li><strong>group_vars/build_server</strong></li>
+<li><strong>group_vars/web</strong>, if using a PHP application with Composer</li>
+</ol>
+
+<h3 id="all">All</h3>
+
+<p>The variables in <code>group_vars/all</code> are available to all servers. Here is a rundown of the variables to add:</p>
+
+<pre><code class="yaml">---
+# Deployed Application Details
+
+# Usernames to add to each server
+
+# User that will run and
+# deploy the application
+appuser_username: appuser
+
+# An admin user which will
+# be allowed to run sudo commands
+admin_username: admin
+
+# The name of our application
+# (machine-readable)
+app_name: serialapp
+
+# User passwords for our two users
+# Password used here: serialapp
+#   generated via `mkpasswd --method=SHA-512`
+#   @link http://docs.ansible.com/ansible/faq.html#how-do-i-generate-crypted-passwords-for-the-user-module
+admin_password:   '$6$gYhFEkelmCcCCf$gbpiYXbYxM8bgi9A.pCmkwNyG8YExw9xHb9zL8c6yrbVhyyTukbcBNuKvo6IPKZINdlJMZesN74f/QN5LngZD.'
+appuser_password: '$6$gYhFEkelmCcCCf$gbpiYXbYxM8bgi9A.pCmkwNyG8YExw9xHb9zL8c6yrbVhyyTukbcBNuKvo6IPKZINdlJMZesN74f/QN5LngZD.'
+
+
+# Your local public key, e.g. ~/.ssh/id_rsa.pub
+# This will be added to the "authorized_keys" file on
+# every server, so we can SSH into those servers from our
+# local machines (e.g. your laptop)
+local_authorized_key: '~/.ssh/id_myapp.pub'
+
+# GitHub Webhook secret, must be known to GitHub and to our web listener
+# which listens for webhooks sent from GitHub.
+# &gt;&gt;&gt; This MUST BE added to the WebHook configuration within your GitHub repository
+webhook_secret: 'abcdefghijklmnopqrstuvwxyz1234567890'
+
+# The GitHub private key that exists on each web server.
+# The corresponding Public key should be added to Github for the
+# deployed repository. This is added to the Web servers so they
+# can access the github repository during deployment
+# &gt;&gt;&gt; This is the content of `id_github`
+github_private_key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    here we put in our long, multi-line ssh private key content
+    -----END RSA PRIVATE KEY-----
+
+# The public key that should be added to Github
+# for the deployed repository.
+# &gt;&gt;&gt; This is the content of `id_github.pub`
+github_public_key: ssh-rsa the-longish-ssh-public-key-generated
+
+# The private key belonging to the Build Server. The corresponding
+# public key is added to each Web server's "authorized_keys" file,
+#  allowing the Build server the access needed to run tasks on them.
+# &gt;&gt;&gt; This is the content of `id_internal`
+internal_private_key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    here we put in our long, multi-line ssh private key content
+    -----END RSA PRIVATE KEY-----
+
+# The public key added to each Web server's "authoried_keys" file,
+# allowing access to those servers from the Build server
+# &gt;&gt;&gt; This is the content of `id_internal.pub`
+internal_public_key: ssh-rsa the-longish-ssh-public-key-generated
+</code></pre>
+
+<h3 id="build-server">Build Server</h3>
+
+<p>The variables in <code>group_vars/build_server</code> are available to the Build Server only. Here is a rundown of the variables to add:</p>
+
+<pre><code class="yaml">---
+# AWS Access Keys. Make sure these are not available
+# anywhere that can be searched or scraped by bots.
+# Restrict access to these keys to the minimum possible access
+aws_access_key_id: ABCDEFGHIJKLMNOPQRST
+aws_secret_access_key: AbcDefGhIJKLmnopQRsTUvWxyZ12345678900987
+# AWS defaults, used in each server's ~/.aws directory/config files
+aws_region: us-east-1
+aws_output: json
+# The SQS url of the queue "pipe". Our build server will push to and pull from
+# this queue in order to facilitate deployments.
+sqs_url: 'https://sqs.us-east-1.amazonaws.com/123456789009/deploy-queue'
+
+# URL for Webhook API given by Slack
+slack_url: 'https://hooks.slack.com/services/F12345678/ABCDEFGHI/abcdefghIjKLmnopqRSTUvwX'
+
+# The GitHub repository to be deployed. This can be public or private
+# as we'll use SSH keys to allow access to the repository
+git_repo: 'git@github.com:Some-User-Or-Organization/some-repository.git'
+</code></pre>
+
+<h3 id="aws-queue-permissions">AWS Queue Permissions</h3>
+
+<p>You'll need to make a new SQS queue for this - the videos cover how exactly. The main point is making a new SQS queue and noting down it's URL and name.</p>
+
+<p>Finally you'll need to make a new user and give them a set of credentials (the access key and secret key). The permissions to give that user for the SQS queue will be similar to the following:</p>
+
+<pre><code class="json">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1425446243123",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage"
+            ],
+            "Resource": [
+                "arn:aws:sqs:us-east-1:012345678987:queue-name-here"
+            ]
+        }
+    ]
+}
+</code></pre>
+
+<p>The <code>Resource</code> you use will have a unique id number and name, and possibly a different region depending on what AWS region you use.</p>
+
+<h3 id="web">Web</h3>
+
+<p>This example has a <code>github_token</code> variable in the <code>group_vars/web</code> file. This is used by Composer to access GitHub and install library dependencies for PHP applications.</p>
+
+<p>You can generate a token <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">as per GitHub's docs</a>.</p>
+
+<pre><code class="yaml">---
+# Generate a GitHub access token for Composer
+# to use as per
+# https://help.github.com/articles/creating-an-access-token-for-command-line-use/
+github_token=1234567890987654321
+</code></pre>
+
+<h3 id="security">Security</h3>
+
+<p>As the variables in the Group Vars are sensitive, you should consider not adding these to a repository on the internet. However, if you do, definitely make use of Ansible Vault to encrypt them.</p>
+
+<p>You'll need a password to use to encrypt/decrypt variables within these files.</p>
+
+<p>Here's how to do that:</p>
+
+<pre><code class="bash"># Encrypt "all" variable file, and create a password
+ansible-vault encrypt group_vars/all
+&gt; CREATE PASSWORD AS PROMPTED
+
+# Encrypt "build_server" variable file, and create a password
+# Use the same password as used above
+ansible-vault encrypt group_vars/build_server
+&gt; CREATE PASSWORD AS PROMPTED
+
+# Encrypt any other file with sensitive variables
+# Use the same password as used above
+# In this case, we encrypt the "web" variable file
+#   which contains a GitHub access token
+ansible-vault encrypt group_vars/web
+&gt; CREATE PASSWORD AS PROMPTED
+</code></pre>
+
+<p>Once encrypted, you can edit these files using <code>ansible-vault</code> as well:</p>
+
+<pre><code class="bash">ansible-vault edit group_vars/all
+&gt; ENTER PASSWORD AS PROMPTED
+</code></pre>
+
+<p>This will open the files in the editor of your choice, as defined by the <code>$EDITOR</code> environment variable (usually nano or vim).</p>
+
+<p>This file will be changed if you open the file but make no changes, as the file is re-encrypted every time it is opened (and then closed) using the <code>ansible-vault</code> tool. Directly editing the file will show an encrypted hash of the file.</p>
+
+<h2 id="run-ansible">Run Ansible</h2>
+
+<p>Once these are all set (or to test if we messed something up) we can finally run Ansible and get started!</p>
+
+<pre><code class="bash">cd ~/path/to/deploy-dist
+
+# Check our Yaml Syntax
+ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o ControlMaster=auto -o ControlPersist=60s' \
+ansible-playbook --private-key=~/.ssh/fideloperllc.pem \
+-i ./hosts \
+--syntax-check \
+--ask-vault-pass \
+provision.yml
+
+# Run Everything!
+ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o ControlMaster=auto -o ControlPersist=60s' \
+ansible-playbook --private-key=~/.ssh/fideloperllc.pem \
+-i ./hosts \
+--ask-vault-pass \
+provision.yml
+
+# Or, Limit runs by host
+# In this example, we run only load_balancer tasks
+ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o ControlMaster=auto -o ControlPersist=60s' \
+ansible-playbook --private-key=~/.ssh/fideloperllc.pem \
+-i ./hosts --limit=load_balancer \
+--ask-vault-pass \
+provision.yml
+</code></pre>
+
+<p>Finally we can run Ansible. The previous commands do the following:</p>
+
+<p>First we set <code>ANSIBLE_SSH_ARGS</code>. The important argument here is <code>IdentitiesOnly yes</code>, which help to ensure we use only the SSH key we have available to access our servers. In my case of using AWS, this is the private key they have you download to access any and all servers you create. You might access this via user root and a password for Linode/Digital Ocean server that doesn't have a key added when you generate a server.</p>
+
+<p>Then we run the Ansible command with the following flags:</p>
+
+<ul>
+<li><strong>--private-key=~/.ssh/fideloperllc.pem</strong> - Define the private key used to access these servers. If you don't have a key pre-loaded onto the servers via your provider, see the documentation directly following this</li>
+<li><strong>-i ./hosts</strong> - Use the <code>hosts</code> file we generated</li>
+<li><strong>--syntax-check</strong> - Optionally, don't run the commands but instead just check the Yaml syntax</li>
+<li><strong>--ask-vault-pass</strong> - Ask the Vault password used to encrypt the Group variables.</li>
+</ul>
+
+<p>If you do not have an SSH key available on the server, you're likely given credentials to access the server via the <code>root</code> user, using a password. You can run Ansible that way by:</p>
+
+<ol>
+<li>Adjusting the hosts file to set the SSH user</li>
+<li>Telling <code>ansible-playbook</code> to ask for a user password</li>
+</ol>
+
+<p>In the Hosts file, tell Ansible to log into each server using user <code>root</code>:</p>
+
+<pre><code class="ini">[load_balancer]
+142.54.87.123  ansible_ssh_user=root
+
+[web]
+142.54.87.124  ansible_ssh_user=root
+142.54.87.125  ansible_ssh_user=root
+
+[build_server]
+142.54.87.126  ansible_ssh_user=root
+</code></pre>
+
+<p>The following command tells Ansible to prompt you for the user's password. This will be the password for user <code>root</code>:</p>
+
+<pre><code class="bash">ansible-playbook \
+    -i ./hosts \
+    --ask-pass \
+    --ask-vault-pass \
+    provision.yml
+</code></pre>
+
+<h1 id="github-notes">GitHub Notes</h1>
+
+<p>It was mentioned in the above configuration, but to be clear - Setup within GitHub involves three things:</p>
+
+<ol>
+<li>Copying the <code>id_github.pub</code> file content into GitHub for access to our repository</li>
+<li>Configuring the Webhook (setting the IP address of your server at port 8080 and set GitHub to use the <code>/webhook</code> URI)
+
+<ul>
+<li>If the IP address of the server is 142.54.87.126, the build server URL from GitHub would be <code>http://142.54.87.126:8080/webhook</code>.</li>
+</ul></li>
+<li>Optionally creating a GitHub Token for Composer to use to grab PHP libraries without hitting GitHub API limits</li>
+</ol>
+
+<h1 id="stand-alone-fabric">Stand-alone Fabric</h1>
+
+<p>We use Python Fabric in this video series to create a deployment process. A stand-alone Fabfile (<code>fabfile.py</code>) is available with these files, which you can add to any project of your own.</p>
+
+<p>By default this will assume you're deploying a PHP project (and even more specifically, a Laravel project), but it of course can be modified to suit your needs.</p>
+
+<p>There are multiple variables to fill in, found within the brackets.</p>
+
+<h2 id="setup">Setup</h2>
+
+<p>If you use the <code>fabfile.py</code> as a stand-alone file, rather than the automated server, some setup will be needed on the production server where the web application will live.</p>
+
+<p>This will basically mirror the setup in the Ansible "app" role provided here. The following is a bash script of the basic steps. We'll pretend the user that runs the application will be "appuser" and the application named "serialapp".</p>
+
+<pre><code class="bash"># Before running this,create the application user (perhaps "appuser") and install server dependencies. In this script, we'll need PHP and Composer.
+
+
+## Add the github SSH key and a configuration to automatically use it
+# This assumes there's an id_github file created on the production
+# server to use with GitHub.
+# See above for notes on creating that.
+USER_SSH_CONFIG="
+Host github.com
+    HostName github.com
+    IdentityFile ~/.ssh/id_github
+    User git
+    IdentitiesOnly yes
+"
+
+echo $USER_SSH_CONFIG &gt;&gt; ~/.ssh/config
+
+
+# Assumes composer is installed
+# on the production server
+# And you've generated a GitHub token
+# This assumes composer is installed
+mkdir -p ~/.composer
+composer --global config github-oauth.github.com 1234567890
+
+# Generate "Persistent" directories
+# for files that persist across deployments
+mkdir -p ~/serialapp/persist
+mkdir -p ~/serialapp/persist/storage/app
+mkdir -p ~/serialapp/persist/storage/framework/cache
+mkdir -p ~/serialapp/persist/storage/framework/sessions
+mkdir -p ~/serialapp/persist/storage/framework/views
+mkdir -p ~/serialapp/persist/storage/logs
+
+# Create a .env file to be used with the laravel applicatin
+# if you're following along this example
+APP_ENV_FILE="
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=1234567890098765432112345678900987654321
+
+DB_HOST=localhost
+DB_DATABASE=homestead
+DB_USERNAME=homestead
+DB_PASSWORD=secret
+
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_DRIVER=sync
+"
+
+echo $APP_ENV_FILE &gt; ~/serialapp/persist/.env
+</code></pre>
+
+<p>These should be run on the production server. Then we can run Fabric locally to connect and run tasks on it.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>

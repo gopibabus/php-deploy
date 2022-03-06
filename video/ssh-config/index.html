@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>SSH Configuration | Deploy!</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow">
+    <!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+    <link rel="stylesheet" href="/assets/css/main.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+    <!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+    <!--Facebook Metadata /-->
+    <meta property="og:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta property="og:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy."/>
+    <meta property="og:title" content="Deploy! by Servers for Hackers"/>
+
+    <!--Google+ Metadata /-->
+    <meta itemprop="name" content="Deploy! by Servers for Hackers">
+    <meta itemprop="description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy.">
+    <meta itemprop="image" content="https://deploy.serversforhackers.com/images/deploy_social.png">
+
+    <!-- Twitter Metadata /-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@srvrsforhackers" />
+    <meta name="twitter:title" content="Deploy! by Servers for Hackers" />
+    <meta name="twitter:description" content="Zero-downtime, professional deployments. A video series to massively improve your deployment strategy." />
+    <meta name="twitter:image" content="https://deploy.serversforhackers.com/images/deploy_social.png" />
+    <meta name="twitter:domain" content="deploy.serversforhackers.com">
+    <link rel="icon" href="/favicon.png">
+                </head>
+<body class="content-page">
+<div id="page-wrapper">
+
+    <!-- Header -->
+    <div id="header-wrapper">
+        <!-- Hero -->
+        <section id="hero" class="container">
+            <header>
+                <img src="/images/logo.png" alt="" width="85" height="85"/>
+            </header>
+        </section>
+    </div>
+
+    <!-- One -->
+    <section class="page-content wrapper style4 container">
+                <!-- Content -->
+        <div class="content">
+            <article>
+                <header><h1>SSH Configuration</h1></header>
+            </article>
+                        <section>
+                <div class="media-resize">
+                    <iframe
+                            id="vjs-video-current"
+                            class="video-js vjs-default-skin vjs-big-play-centered"
+                            width="100%"
+                            height="641"
+                            src="https://www.youtube.com/embed/fpeJfKddc44"
+                            title="ssh-configure"
+                            allow="picture-in-picture"
+                            allowfullscreen
+                    >
+                    </iframe>
+                </div>
+            </section>
+                        <article>
+                <h1 id="application-server-access">Application Server Access</h1>
+
+<p>Typing out <code>ssh -o "IdentitiesOnly yes" -i ~/.ssh/id_series admin@45.55.209.211</code> is annoying. <em>Very</em> annoying.</p>
+
+<p>We'll see how to make this easier!</p>
+
+<p>Add the following configuration to your local workstation user's SSH configuration file:</p>
+
+<pre><code class="bash"># Add/Edit local user's ssh config
+vim ~/.ssh/config
+</code></pre>
+
+<p>Add the following to log into our previous created user with the SSH key we created.</p>
+
+<pre><code>Host series-admin
+    HostName 45.55.209.211
+    User admin
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_series
+</code></pre>
+
+<p>We can use many options there - just about all the ones you see if you use the <code>man ssh</code> command.</p>
+
+<p>After that configuration is added, we can now simply log in using the following:</p>
+
+<pre><code class="bash">ssh series-admin
+</code></pre>
+
+<h2 id="more-users">More Users</h2>
+
+<p>We can add an additional configuration to log in as our "serial" application user as well!</p>
+
+<p>Make the configuration file look like this:</p>
+
+<pre><code>Host series-admin
+    HostName 45.55.209.211
+    User admin
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_series
+
+Host series-app
+    HostName 45.55.209.211
+    User serial
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_series
+</code></pre>
+
+<p>Now we can quickly use SSH to log in (and copy files!) to our production server without having to re-type all the various options you might need to connect.</p>
+
+            </article>
+        </div>
+    </section>
+
+
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <div id="copyright" class="container">
+            <ul class="menu">
+                <li>&copy; Fideloper LLC</li>
+                <li>Servers for Hackers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="/assets/js/jquery.min.js"></script>
+<!-- <script src="/assets/js/jquery.dropotron.min.js"></script> -->
+<script src="/assets/js/skel.min.js"></script>
+<script src="/assets/js/util.js"></script>
+<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+<script src="//vjs.zencdn.net/4.12/video.js"></script>
+<script src="/assets/js/main.js"></script>
+
+</body>
+</html>
